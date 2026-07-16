@@ -20,17 +20,8 @@ let currentLang = localStorage.getItem("lang") || "en";
 let currentTheme = localStorage.getItem("theme") || "dark";
 let cleanupParticles = null;
 
-function normalizePath(path) {
-  const parts = path.replace(/\/$/, "").split("/");
-  const known = ["/", "/bio", "/stack", "/projects", "/contact"];
-  const clean = "/" + parts.filter((p) => p && !known.includes("/" + p)).join("/");
-  for (const k of known) {
-    if (path.endsWith(k) || path === k) return k;
-  }
-  for (const k of known) {
-    if (path.includes(k)) return k;
-  }
-  return "/";
+function getPathFromHash() {
+  return window.location.hash.replace(/^#/, "") || "/";
 }
 
 function getTranslations() {
@@ -60,17 +51,12 @@ function applyLang(lang) {
   document.querySelectorAll("[data-lang-btn]").forEach((btn) => {
     btn.classList.toggle("active", btn.dataset.langBtn === lang);
   });
-  const content = document.getElementById("page-content");
-  if (content) {
-    content.innerHTML = getPageHTML(currentPath);
-  }
+  render(currentPath, false);
   const footer = document.getElementById("footer-text");
   if (footer) {
     const tr = getTranslations();
     footer.textContent = tr.common.footer;
   }
-  initScrollReveal();
-  rebindNavLinks();
 }
 
 function getPageHTML(path) {
@@ -79,26 +65,33 @@ function getPageHTML(path) {
   return route(tr);
 }
 
-async function navigate(path) {
+function navigate(path) {
+  if (!path.startsWith("/")) path = "/" + path;
   if (path === currentPath) return;
-  currentPath = path;
+  location.hash = "#" + path;
+}
 
+async function render(path, animate) {
   const content = document.getElementById("page-content");
   if (!content) return;
 
-  content.style.opacity = "0";
-  content.style.transform = "scale(0.98)";
-  content.style.transition = "opacity 0.15s ease, transform 0.15s ease";
-
-  await new Promise((r) => setTimeout(r, 150));
+  if (animate) {
+    content.style.opacity = "0";
+    content.style.transform = "scale(0.98)";
+    content.style.transition = "opacity 0.15s ease, transform 0.15s ease";
+    await new Promise((r) => setTimeout(r, 150));
+  }
 
   content.innerHTML = getPageHTML(path);
+  currentPath = path;
 
-  requestAnimationFrame(() => {
-    content.style.transition = "opacity 0.5s ease, transform 0.5s cubic-bezier(0.16,1,0.3,1)";
-    content.style.opacity = "1";
-    content.style.transform = "scale(1)";
-  });
+  if (animate) {
+    requestAnimationFrame(() => {
+      content.style.transition = "opacity 0.5s ease, transform 0.5s cubic-bezier(0.16,1,0.3,1)";
+      content.style.opacity = "1";
+      content.style.transform = "scale(1)";
+    });
+  }
 
   updateActiveNav();
   const mobileMenu = document.getElementById("mobile-menu");
@@ -109,18 +102,16 @@ async function navigate(path) {
 
 function updateActiveNav() {
   document.querySelectorAll("[data-nav]").forEach((el) => {
-    const href = el.getAttribute("href");
+    const href = el.getAttribute("href").replace(/^#/, "");
     el.classList.toggle("active", href === currentPath);
   });
 }
 
 function handleNavClick(e) {
-  const link = e.currentTarget;
-  const path = link.getAttribute("href");
+  const path = e.currentTarget.getAttribute("href").replace(/^#/, "");
   if (path && routes[path]) {
     e.preventDefault();
     navigate(path);
-    window.history.pushState({ path }, "", path);
   }
 }
 
@@ -185,29 +176,20 @@ function init() {
   const spaPath = sessionStorage.getItem("spa:path");
   if (spaPath) {
     sessionStorage.removeItem("spa:path");
-    window.history.replaceState({ path: spaPath }, "", spaPath);
-  }
-  currentPath = normalizePath(window.location.pathname);
-  const content = document.getElementById("page-content");
-  if (content) {
-    content.innerHTML = getPageHTML(currentPath);
+    location.hash = "#" + spaPath;
+    return;
   }
 
+  currentPath = getPathFromHash();
+  render(currentPath, false);
   rebindNavLinks();
-  setTimeout(initScrollReveal, 150);
+  window.addEventListener("hashchange", onHashChange);
+}
 
-  window.addEventListener("popstate", (e) => {
-    const path = e.state?.path || "/";
-    if (path !== currentPath) {
-      currentPath = path;
-      const content = document.getElementById("page-content");
-      if (content) {
-        content.innerHTML = getPageHTML(path);
-        setTimeout(initScrollReveal, 100);
-        updateActiveNav();
-      }
-    }
-  });
+function onHashChange() {
+  const path = getPathFromHash();
+  if (path === currentPath) return;
+  render(path, true);
 }
 
 if (document.readyState === "loading") {
