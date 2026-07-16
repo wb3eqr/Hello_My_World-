@@ -4,8 +4,8 @@
   <meta charset="utf-8" />
   <title>Redirecting...</title>
   <script>
-    sessionStorage.setItem("spa:path", location.pathname.replace(/\/+$/, "") || "/");
-    location.replace("./index.html");
+    var p = location.pathname.replace(/^\/Hello_My_World-/, "") || "/";
+    location.replace("./#" + p);
   </script>
 </head>
 <body></body>
