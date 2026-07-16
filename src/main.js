@@ -182,6 +182,11 @@ function init() {
   initThemeToggle();
   initLangToggle();
 
+  const spaPath = sessionStorage.getItem("spa:path");
+  if (spaPath) {
+    sessionStorage.removeItem("spa:path");
+    window.history.replaceState({ path: spaPath }, "", spaPath);
+  }
   currentPath = normalizePath(window.location.pathname);
   const content = document.getElementById("page-content");
   if (content) {
