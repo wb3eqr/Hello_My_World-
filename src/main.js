@@ -20,6 +20,19 @@ let currentLang = localStorage.getItem("lang") || "en";
 let currentTheme = localStorage.getItem("theme") || "dark";
 let cleanupParticles = null;
 
+function normalizePath(path) {
+  const parts = path.replace(/\/$/, "").split("/");
+  const known = ["/", "/bio", "/stack", "/projects", "/contact"];
+  const clean = "/" + parts.filter((p) => p && !known.includes("/" + p)).join("/");
+  for (const k of known) {
+    if (path.endsWith(k) || path === k) return k;
+  }
+  for (const k of known) {
+    if (path.includes(k)) return k;
+  }
+  return "/";
+}
+
 function getTranslations() {
   return currentLang === "ru" ? ru : en;
 }
@@ -169,7 +182,7 @@ function init() {
   initThemeToggle();
   initLangToggle();
 
-  currentPath = window.location.pathname;
+  currentPath = normalizePath(window.location.pathname);
   const content = document.getElementById("page-content");
   if (content) {
     content.innerHTML = getPageHTML(currentPath);
